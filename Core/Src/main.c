@@ -25,7 +25,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "lcd.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -95,19 +95,20 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  Question();
   while (1)
   {
     /* USER CODE END WHILE */
-	      POINT_COLOR = RED;
-	  	  LCD_ShowString(30, 40, 200, 24, 24, (uint8_t*) "Mini STM32 ^_^");
-	  	  LCD_ShowString(30, 70, 200, 16, 16, (uint8_t*) "TFTLCD TEST");
-	  	  POINT_COLOR = BLACK;
-	  	  LCD_DrawRectangle(30, 150, 210, 190);
-	  	  LCD_Fill(31, 151, 209, 189, YELLOW);
-	  	  x++;
-	  	  if (x == 12)
-	  		  x = 0;
-	  	  HAL_Delay(2000);
+	      // POINT_COLOR = RED;
+	  	  // LCD_ShowString(30, 40, 200, 24, 24, (uint8_t*) "Mini STM32 ^_^");
+	  	  // LCD_ShowString(30, 70, 200, 16, 16, (uint8_t*) "TFTLCD TEST");
+	  	  // POINT_COLOR = BLACK;
+	  	  // LCD_DrawRectangle(30, 150, 210, 190);
+	  	  // LCD_Fill(31, 151, 209, 189, YELLOW);
+	  	  // x++;
+	  	  // if (x == 12)
+	  		//   x = 0;
+	  	  // HAL_Delay(2000);
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -153,7 +154,11 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
-
+  enum QuestionerState{
+    Question,
+    Answer,
+    Judge
+  };
 
 	struct question{
 		int index;
@@ -163,18 +168,21 @@ void SystemClock_Config(void)
 	};
 
 	struct question questions[2]={
-		{1,"Do you like embedded system course?","0: Yes\n 1:No",0},
-		{2,"Do you like C?","0: Yes\n 1:No",1}
+		{1,"Do you like embedded system course?","0: Yes 1:No",0},
+		{2,"Do you like C?","0: Yes 1:No",1}
 	};
 
 	int answerIndex=0;
 	void Question(){
 		struct question *q = &questions[answerIndex];
-    POINT_COLOR = RED;
-	  LCD_ShowString(30, 40, 200, 24, 24, q->answerIndex);
-	  LCD_ShowString(30, 70, 200, 16, 16, q->content);
-	  LCD_ShowString(30, 70, 200, 16, 16, q->content);
+		POINT_COLOR = RED;
+	  LCD_ShowString(30, 40, 200, 24, 16, 5);
+	  LCD_ShowString(30, 70, 200, 16, 12, q->content);
+	  // LCD_ShowString(30, 70, 200, 16, 16, q->content);
 	  POINT_COLOR = BLACK;
+
+	  answerIndex++;
+	  answerIndex%=2;
 
 	}
 
@@ -190,6 +198,63 @@ void SystemClock_Config(void)
 	void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 		Judge();
 	}
+
+  void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  HAL_Delay(100);
+
+  switch (GPIO_Pin)
+
+  {
+  case KEY0_Pin:
+    if (HAL_GPIO_ReadPin(KEY0_GPIO_Port, KEY0_Pin) == GPIO_PIN_RESET)
+    {
+      HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
+      HAL_Delay(500);
+      HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
+      HAL_Delay(500);
+      HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
+      HAL_Delay(500);
+      HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
+      HAL_Delay(500);
+      HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
+      HAL_Delay(500);
+      HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
+      HAL_Delay(500);
+    }
+    break;
+  case KEY1_Pin:
+    if (HAL_GPIO_ReadPin(KEY1_GPIO_Port, KEY1_Pin) == GPIO_PIN_RESET)
+    {
+      HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
+      HAL_Delay(500);
+      HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
+      HAL_Delay(500);
+      HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
+      HAL_Delay(500);
+      HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
+      HAL_Delay(500);
+
+      HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
+      HAL_Delay(500);
+      HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
+      HAL_Delay(500);
+    }
+    break;
+  case KEY_WK_Pin:
+    if (HAL_GPIO_ReadPin(KEY_WK_GPIO_Port, KEY_WK_Pin) == GPIO_PIN_RESET)
+    {
+      HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
+      HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
+    }
+    break;
+  default:
+    break;
+  }
+
+
+}
+
 /* USER CODE END 4 */
 
 /**
