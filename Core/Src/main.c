@@ -153,6 +153,8 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
+
+
 	struct question{
 		int index;
 		char* content;
@@ -186,7 +188,7 @@ void SystemClock_Config(void)
 
 
 	void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
-		HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+		Judge();
 	}
 /* USER CODE END 4 */
 
