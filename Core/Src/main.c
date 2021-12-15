@@ -82,7 +82,7 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-
+  LCD_Init();
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -98,7 +98,16 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
+	      POINT_COLOR = RED;
+	  	  LCD_ShowString(30, 40, 200, 24, 24, (uint8_t*) "Mini STM32 ^_^");
+	  	  LCD_ShowString(30, 70, 200, 16, 16, (uint8_t*) "TFTLCD TEST");
+	  	  POINT_COLOR = BLACK;
+	  	  LCD_DrawRectangle(30, 150, 210, 190);
+	  	  LCD_Fill(31, 151, 209, 189, YELLOW);
+	  	  x++;
+	  	  if (x == 12)
+	  		  x = 0;
+	  	  HAL_Delay(2000);
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -158,7 +167,13 @@ void SystemClock_Config(void)
 
 	int answerIndex=0;
 	void Question(){
-		 questions[answerIndex];
+		struct question *q = &questions[answerIndex];
+    POINT_COLOR = RED;
+	  LCD_ShowString(30, 40, 200, 24, 24, q->answerIndex);
+	  LCD_ShowString(30, 70, 200, 16, 16, q->content);
+	  LCD_ShowString(30, 70, 200, 16, 16, q->content);
+	  POINT_COLOR = BLACK;
+
 	}
 
 	void Answer(){
