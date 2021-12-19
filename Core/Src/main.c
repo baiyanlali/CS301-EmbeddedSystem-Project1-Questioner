@@ -135,7 +135,8 @@ void SystemClock_Config(void)
   }
   /** Initializes the CPU, AHB and APB buses clocks
   */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
@@ -154,7 +155,7 @@ enum QuestionerState
   QuestionState,
   AnswerState,
   JudgeState
-};
+} state;
 
 struct question
 {
@@ -171,8 +172,6 @@ struct question questions[2] = {
 
 int answerIndex = 0;
 
-enum QuestionerState state;
-
 struct question *q;
 
 int point = 0;
@@ -187,8 +186,11 @@ void Question()
 
   q = &questions[answerIndex];
   POINT_COLOR = RED;
+  LCD_Clear(WHITE);
+  // LCD_Color_Fill(0,0,240, 320,WHITE);
   LCD_ShowString(30, 40, 200, 24, 16, "Question   Time:5s");
   LCD_ShowString(30, 70, 200, 16, 12, q->content);
+  LCD_ShowString(30, 150, 200, 16, 12, "Click any key to send the question.");
   // LCD_ShowString(30, 70, 200, 16, 16, q->content);
   POINT_COLOR = BLACK;
 
@@ -204,13 +206,15 @@ void Answer(char* ans)
     if (atoi(ans)== q->answerIndex)
     {
       HAL_TIM_Base_Stop_IT(&htim2);
-      LCD_ShowString(30, 70, 200, 16, 12, "Check right!");
+      // LCD_ShowString(30, 70, 200, 16, 12, "Check right!");
       point = point + q->pointAward;
       // HAL_Delay(500);
       Judge();
     }else{
       sprintf(msg,"Check wrong: %d %d\n",atoi(ans),q->answerIndex);
       HAL_UART_Transmit(&huart1,msg,strlen(msg),HAL_MAX_DELAY);
+      LCD_Clear(RED);
+      // LCD_Color_Fill(0,0,240, 320,RED);
       LCD_ShowString(30, 70, 200, 16, 12, "Check wrong!");
     }
   //   break;
@@ -226,8 +230,10 @@ void Judge()
   state=JudgeState;
   char strs[64];
   sprintf(strs, "Your point: %d", point);
+  LCD_Clear(WHITE);
+  // LCD_Color_Fill(0,0,240, 320,WHITE);
   LCD_ShowString(30, 70, 200, 16, 12, strs);
-  LCD_ShowString(30, 200, 200, 16, 12, "Click 0 to play and 1 to reset.");
+  LCD_ShowString(30, 200, 200, 16, 12, "Click 1 to play and 0 to reset.");
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
@@ -248,12 +254,18 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
       switch (state)
       {
       case QuestionState:
-        HAL_UART_Transmit(&huart1, q->content, strlen(q->content), 0xffff);
+        sprintf(msg,"%s",q->content);
+        HAL_UART_Transmit(&huart1, msg, strlen(msg), 0xffff);
+        LCD_Clear(GREEN);
+        // LCD_Color_Fill(0,0,240, 320,GREEN);
+        LCD_ShowString(30, 40, 200, 24, 16, "Question   Time:5s");
+        LCD_ShowString(30, 70, 200, 16, 12, msg);
         HAL_TIM_Base_Start_IT(&htim2);
         state = AnswerState;
 
         break;
       case JudgeState:
+        answerIndex = 0;
         state = QuestionState;
         Question();
         break;
@@ -270,13 +282,17 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
       switch (state)
       {
       case QuestionState:
-        HAL_UART_Transmit(&huart1, q->content, strlen(q->content), 0xffff);
+        sprintf(msg,"%s",q->content);
+        HAL_UART_Transmit(&huart1, msg, strlen(msg), 0xffff);
+        LCD_Clear(GREEN);
+        // LCD_Color_Fill(0,0,240, 320,GREEN);
+        LCD_ShowString(30, 40, 200, 24, 16, "Question   Time:5s");
+        LCD_ShowString(30, 70, 200, 16, 12, msg);
         HAL_TIM_Base_Start_IT(&htim2);
         state = AnswerState;
         break;
       case JudgeState:
         state = QuestionState;
-        answerIndex = 0;
         Question();
         break;
 
@@ -314,38 +330,38 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	}
 }
 
-  /* USER CODE END 4 */
+/* USER CODE END 4 */
 
-  /**
+/**
   * @brief  This function is executed in case of error occurrence.
   * @retval None
   */
-  void Error_Handler(void)
-  {
-    /* USER CODE BEGIN Error_Handler_Debug */
+void Error_Handler(void)
+{
+  /* USER CODE BEGIN Error_Handler_Debug */
     /* User can add his own implementation to report the HAL error return state */
     __disable_irq();
     while (1)
     {
     }
-    /* USER CODE END Error_Handler_Debug */
-  }
+  /* USER CODE END Error_Handler_Debug */
+}
 
-#ifdef USE_FULL_ASSERT
-  /**
+#ifdef  USE_FULL_ASSERT
+/**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.
   * @param  file: pointer to the source file name
   * @param  line: assert_param error line source number
   * @retval None
   */
-  void assert_failed(uint8_t * file, uint32_t line)
-  {
-    /* USER CODE BEGIN 6 */
+void assert_failed(uint8_t *file, uint32_t line)
+{
+  /* USER CODE BEGIN 6 */
     /* User can add his own implementation to report the file name and line number,
      ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
-    /* USER CODE END 6 */
-  }
+  /* USER CODE END 6 */
+}
 #endif /* USE_FULL_ASSERT */
 
-  /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
+/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
