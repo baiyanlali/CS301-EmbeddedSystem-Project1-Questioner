@@ -99,16 +99,7 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-	      // POINT_COLOR = RED;
-	  	  // LCD_ShowString(30, 40, 200, 24, 24, (uint8_t*) "Mini STM32 ^_^");
-	  	  // LCD_ShowString(30, 70, 200, 16, 16, (uint8_t*) "TFTLCD TEST");
-	  	  // POINT_COLOR = BLACK;
-	  	  // LCD_DrawRectangle(30, 150, 210, 190);
-	  	  // LCD_Fill(31, 151, 209, 189, YELLOW);
-	  	  // x++;
-	  	  // if (x == 12)
-	  		//   x = 0;
-	  	  // HAL_Delay(2000);
+
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -173,8 +164,15 @@ void SystemClock_Config(void)
 	};
 
 	int answerIndex=0;
+
+  enum QuestionerState state;
+
+  struct question *q;
+
 	void Question(){
-		struct question *q = &questions[answerIndex];
+    state=Question;
+
+		q = &questions[answerIndex];
 		POINT_COLOR = RED;
 	  LCD_ShowString(30, 40, 200, 24, 16, 5);
 	  LCD_ShowString(30, 70, 200, 16, 12, q->content);
@@ -183,7 +181,6 @@ void SystemClock_Config(void)
 
 	  answerIndex++;
 	  answerIndex%=2;
-
 	}
 
 	void Answer(){
@@ -209,43 +206,21 @@ void SystemClock_Config(void)
   case KEY0_Pin:
     if (HAL_GPIO_ReadPin(KEY0_GPIO_Port, KEY0_Pin) == GPIO_PIN_RESET)
     {
-      HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
-      HAL_Delay(500);
-      HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
-      HAL_Delay(500);
-      HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
-      HAL_Delay(500);
-      HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
-      HAL_Delay(500);
-      HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
-      HAL_Delay(500);
-      HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
-      HAL_Delay(500);
+      if(state==Question){
+        HAL_UART_Transmit(&huart1, q->content,strlen(q->content), 0xffff);
+      }
     }
     break;
   case KEY1_Pin:
     if (HAL_GPIO_ReadPin(KEY1_GPIO_Port, KEY1_Pin) == GPIO_PIN_RESET)
     {
-      HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
-      HAL_Delay(500);
-      HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
-      HAL_Delay(500);
-      HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
-      HAL_Delay(500);
-      HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
-      HAL_Delay(500);
-
-      HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
-      HAL_Delay(500);
-      HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
-      HAL_Delay(500);
+      
     }
     break;
   case KEY_WK_Pin:
     if (HAL_GPIO_ReadPin(KEY_WK_GPIO_Port, KEY_WK_Pin) == GPIO_PIN_RESET)
     {
-      HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
-      HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
+      
     }
     break;
   default:
