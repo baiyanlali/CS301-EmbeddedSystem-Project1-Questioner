@@ -45,7 +45,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+UART_HandleTypeDef huart1;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -56,7 +56,8 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+extern UART_HandleTypeDef haurt1;
+extern uint8_t rxBuffer[20];
 /* USER CODE END 0 */
 
 /**
@@ -90,12 +91,12 @@ int main(void)
   MX_USART1_UART_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
-
+  HAL_UART_Receive_IT(&huart1, (uint8_t *)rxBuffer, 1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  Question();
+  //  Question();
   while (1)
   {
     /* USER CODE END WHILE */
@@ -130,8 +131,7 @@ void SystemClock_Config(void)
   }
   /** Initializes the CPU, AHB and APB buses clocks
   */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
@@ -145,81 +145,84 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
-  enum QuestionerState{
-    QuestionState,
-    AnswerState,
-    JudgeState
-  };
+enum QuestionerState
+{
+  QuestionState,
+  AnswerState,
+  JudgeState
+};
 
-	struct question{
-		int index;
-		char* content;
-		char* answerList;
-		int answerIndex;
-    int pointAward;
-	};
+struct question
+{
+  int index;
+  char *content;
+  char *answerList;
+  int answerIndex;
+  int pointAward;
+};
 
-	struct question questions[2]={
-		{1,"Do you like embedded system course?","0: Yes 1:No",0,20},
-		{2,"Do you like C?","0: Yes 1:No",1,100}
-	};
+struct question questions[2] = {
+    {1, "Do you like embedded system course?", "0: Yes 1:No", 0, 20},
+    {2, "Do you like C?", "0: Yes 1:No", 1, 100}};
 
-	int answerIndex=0;
+int answerIndex = 0;
 
-  enum QuestionerState state;
+enum QuestionerState state;
 
-  struct question *q;
+struct question *q;
 
-  int point=0;
+int point = 0;
 
-  char* answer;
-  
-	void Question(){
-    state=Question;
+char *answer;
 
-		q = &questions[answerIndex];
-		POINT_COLOR = RED;
-	  LCD_ShowString(30, 40, 200, 24, 16, 5);
-	  LCD_ShowString(30, 70, 200, 16, 12, q->content);
-	  // LCD_ShowString(30, 70, 200, 16, 16, q->content);
-	  POINT_COLOR = BLACK;
+void Question()
+{
+  state = Question;
 
-	  answerIndex++;
-	  answerIndex%=2;
-	}
+  q = &questions[answerIndex];
+  POINT_COLOR = RED;
+  LCD_ShowString(30, 40, 200, 24, 16, 5);
+  LCD_ShowString(30, 70, 200, 16, 12, q->content);
+  // LCD_ShowString(30, 70, 200, 16, 16, q->content);
+  POINT_COLOR = BLACK;
 
-	void Answer(){
-    switch (state)
+  answerIndex++;
+  answerIndex %= 2;
+}
+
+void Answer()
+{
+  switch (state)
+  {
+  case AnswerState:
+    if (strcmp(atoi(answer), q->answerIndex) == 0)
     {
-    case AnswerState:
-      if(strcmp(atoi(answer),q->answerIndex)==0){
       HAL_TIM_Base_Stop_IT(&htim2);
       LCD_ShowString(30, 70, 200, 16, 12, "Check right!");
       point = point + q->pointAward;
       Judge();
     }
-      break;
-    
-    default:
-      break;
-    }
+    break;
 
-    
-	}
+  default:
+    break;
+  }
+}
 
-	void Judge(){
-    char strs[64];
-    sprintf(strs,"Your point: %d",point);
-	  LCD_ShowString(30, 70, 200, 16, 12,strs);
-    LCD_ShowString(30,200,200,16,12,"Click 0 to play and 1 to reset.");
-	}
+void Judge()
+{
+  char strs[64];
+  sprintf(strs, "Your point: %d", point);
+  LCD_ShowString(30, 70, 200, 16, 12, strs);
+  LCD_ShowString(30, 200, 200, 16, 12, "Click 0 to play and 1 to reset.");
+}
 
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  Judge();
+}
 
-	void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
-		Judge();
-	}
-
-  void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
 
   switch (GPIO_Pin)
@@ -231,16 +234,16 @@ void SystemClock_Config(void)
       switch (state)
       {
       case QuestionState:
-        HAL_UART_Transmit(&huart1, q->content,strlen(q->content), 0xffff);
+        HAL_UART_Transmit(&huart1, q->content, strlen(q->content), 0xffff);
         HAL_TIM_Base_Start_IT(&htim2);
-        state=AnswerState;
-      
+        state = AnswerState;
+
         break;
       case JudgeState:
         Question();
-        state=QuestionState;
+        state = QuestionState;
         break;
-      
+
       default:
         break;
       }
@@ -252,66 +255,54 @@ void SystemClock_Config(void)
       switch (state)
       {
       case QuestionState:
-        HAL_UART_Transmit(&huart1, q->content,strlen(q->content), 0xffff);
+        HAL_UART_Transmit(&huart1, q->content, strlen(q->content), 0xffff);
         HAL_TIM_Base_Start_IT(&htim2);
-        state=AnswerState;
+        state = AnswerState;
         break;
       case JudgeState:
-        answerIndex=0;
+        answerIndex = 0;
         Question();
-        state=QuestionState;
+        state = QuestionState;
         break;
-      
+
       default:
         break;
       }
     }
-    break;
-  case KEY_WK_Pin:
-    if (HAL_GPIO_ReadPin(KEY_WK_GPIO_Port, KEY_WK_Pin) == GPIO_PIN_RESET)
-    {
-      
-    }
-    break;
-  default:
-    break;
   }
 
+  /* USER CODE END 4 */
 
-}
-
-/* USER CODE END 4 */
-
-/**
+  /**
   * @brief  This function is executed in case of error occurrence.
   * @retval None
   */
-void Error_Handler(void)
-{
-  /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
-  __disable_irq();
-  while (1)
+  void Error_Handler(void)
   {
+    /* USER CODE BEGIN Error_Handler_Debug */
+    /* User can add his own implementation to report the HAL error return state */
+    __disable_irq();
+    while (1)
+    {
+    }
+    /* USER CODE END Error_Handler_Debug */
   }
-  /* USER CODE END Error_Handler_Debug */
-}
 
-#ifdef  USE_FULL_ASSERT
-/**
+#ifdef USE_FULL_ASSERT
+  /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.
   * @param  file: pointer to the source file name
   * @param  line: assert_param error line source number
   * @retval None
   */
-void assert_failed(uint8_t *file, uint32_t line)
-{
-  /* USER CODE BEGIN 6 */
-  /* User can add his own implementation to report the file name and line number,
+  void assert_failed(uint8_t * file, uint32_t line)
+  {
+    /* USER CODE BEGIN 6 */
+    /* User can add his own implementation to report the file name and line number,
      ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
-  /* USER CODE END 6 */
-}
+    /* USER CODE END 6 */
+  }
 #endif /* USE_FULL_ASSERT */
 
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
+  /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
