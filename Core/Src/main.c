@@ -146,9 +146,9 @@ void SystemClock_Config(void)
 /* USER CODE BEGIN 4 */
 
   enum QuestionerState{
-    Question,
-    Answer,
-    Judge
+    QuestionState,
+    AnswerState,
+    JudgeState
   };
 
 	struct question{
@@ -156,11 +156,12 @@ void SystemClock_Config(void)
 		char* content;
 		char* answerList;
 		int answerIndex;
+    int pointAward;
 	};
 
 	struct question questions[2]={
-		{1,"Do you like embedded system course?","0: Yes 1:No",0},
-		{2,"Do you like C?","0: Yes 1:No",1}
+		{1,"Do you like embedded system course?","0: Yes 1:No",0,20},
+		{2,"Do you like C?","0: Yes 1:No",1,100}
 	};
 
 	int answerIndex=0;
@@ -169,6 +170,10 @@ void SystemClock_Config(void)
 
   struct question *q;
 
+  int point=0;
+
+  char* answer;
+  
 	void Question(){
     state=Question;
 
@@ -184,11 +189,29 @@ void SystemClock_Config(void)
 	}
 
 	void Answer(){
+    switch (state)
+    {
+    case AnswerState:
+      if(strcmp(atoi(answer),q->answerIndex)==0){
+      HAL_TIM_Base_Stop_IT(&htim2);
+      LCD_ShowString(30, 70, 200, 16, 12, "Check right!");
+      point = point + q->pointAward;
+      Judge();
+    }
+      break;
+    
+    default:
+      break;
+    }
 
+    
 	}
 
 	void Judge(){
-
+    char strs[64];
+    sprintf(strs,"Your point: %d",point);
+	  LCD_ShowString(30, 70, 200, 16, 12,strs);
+    LCD_ShowString(30,200,200,16,12,"Click 0 to play and 1 to reset.");
 	}
 
 
@@ -198,7 +221,6 @@ void SystemClock_Config(void)
 
   void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-  HAL_Delay(100);
 
   switch (GPIO_Pin)
 
@@ -206,15 +228,43 @@ void SystemClock_Config(void)
   case KEY0_Pin:
     if (HAL_GPIO_ReadPin(KEY0_GPIO_Port, KEY0_Pin) == GPIO_PIN_RESET)
     {
-      if(state==Question){
+      switch (state)
+      {
+      case QuestionState:
         HAL_UART_Transmit(&huart1, q->content,strlen(q->content), 0xffff);
+        HAL_TIM_Base_Start_IT(&htim2);
+        state=AnswerState;
+      
+        break;
+      case JudgeState:
+        Question();
+        state=QuestionState;
+        break;
+      
+      default:
+        break;
       }
     }
     break;
   case KEY1_Pin:
     if (HAL_GPIO_ReadPin(KEY1_GPIO_Port, KEY1_Pin) == GPIO_PIN_RESET)
     {
+      switch (state)
+      {
+      case QuestionState:
+        HAL_UART_Transmit(&huart1, q->content,strlen(q->content), 0xffff);
+        HAL_TIM_Base_Start_IT(&htim2);
+        state=AnswerState;
+        break;
+      case JudgeState:
+        answerIndex=0;
+        Question();
+        state=QuestionState;
+        break;
       
+      default:
+        break;
+      }
     }
     break;
   case KEY_WK_Pin:
