@@ -45,7 +45,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+UART_HandleTypeDef huart1;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -56,7 +56,8 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+extern UART_HandleTypeDef haurt1;
+extern uint8_t rxBuffer[20];
 /* USER CODE END 0 */
 
 /**
@@ -90,12 +91,12 @@ int main(void)
   MX_USART1_UART_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
-
+  HAL_UART_Receive_IT(&huart1,(uint8_t*)rxBuffer,1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  Question();
+//  Question();
   while (1)
   {
     /* USER CODE END WHILE */
@@ -214,14 +215,9 @@ void SystemClock_Config(void)
   case KEY1_Pin:
     if (HAL_GPIO_ReadPin(KEY1_GPIO_Port, KEY1_Pin) == GPIO_PIN_RESET)
     {
-      
+
     }
     break;
-  case KEY_WK_Pin:
-    if (HAL_GPIO_ReadPin(KEY_WK_GPIO_Port, KEY_WK_Pin) == GPIO_PIN_RESET)
-    {
-      
-    }
     break;
   default:
     break;
