@@ -26,6 +26,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "lcd.h"
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -46,12 +47,15 @@
 
 /* USER CODE BEGIN PV */
 UART_HandleTypeDef huart1;
+extern uint8_t rxBuffer[20];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-
+void Question();
+void Judge();
+void Answer(char*);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -96,7 +100,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  //  Question();
+  Question();
   while (1)
   {
     /* USER CODE END WHILE */
@@ -162,8 +166,8 @@ struct question
 };
 
 struct question questions[2] = {
-    {1, "Do you like embedded system course?", "0: Yes 1:No", 0, 20},
-    {2, "Do you like C?", "0: Yes 1:No", 1, 100}};
+    {1, "Do you like embedded system course?\n", "0: Yes 1:No", 0, 20},
+    {2, "Do you like C?\n", "0: Yes 1:No", 1, 100}};
 
 int answerIndex = 0;
 
@@ -174,14 +178,16 @@ struct question *q;
 int point = 0;
 
 char *answer;
+unsigned char msg[100];
+
 
 void Question()
 {
-  state = Question;
+  state = QuestionState;
 
   q = &questions[answerIndex];
   POINT_COLOR = RED;
-  LCD_ShowString(30, 40, 200, 24, 16, 5);
+  LCD_ShowString(30, 40, 200, 24, 16, "Question   Time:5s");
   LCD_ShowString(30, 70, 200, 16, 12, q->content);
   // LCD_ShowString(30, 70, 200, 16, 16, q->content);
   POINT_COLOR = BLACK;
@@ -190,27 +196,34 @@ void Question()
   answerIndex %= 2;
 }
 
-void Answer()
+void Answer(char* ans)
 {
-  switch (state)
-  {
-  case AnswerState:
-    if (strcmp(atoi(answer), q->answerIndex) == 0)
+  // switch (state)
+  // {
+  // case AnswerState:
+    if (atoi(ans)== q->answerIndex)
     {
       HAL_TIM_Base_Stop_IT(&htim2);
       LCD_ShowString(30, 70, 200, 16, 12, "Check right!");
       point = point + q->pointAward;
+      // HAL_Delay(500);
       Judge();
+    }else{
+      sprintf(msg,"Check wrong: %d %d\n",atoi(ans),q->answerIndex);
+      HAL_UART_Transmit(&huart1,msg,strlen(msg),HAL_MAX_DELAY);
+      LCD_ShowString(30, 70, 200, 16, 12, "Check wrong!");
     }
-    break;
+  //   break;
 
-  default:
-    break;
-  }
+  // default:
+  //   break;
+  // }
 }
 
 void Judge()
 {
+  HAL_UART_Transmit(&huart1,"Enter Judge\n",strlen("Enter Judge\n"),HAL_MAX_DELAY);
+  state=JudgeState;
   char strs[64];
   sprintf(strs, "Your point: %d", point);
   LCD_ShowString(30, 70, 200, 16, 12, strs);
@@ -231,6 +244,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
   case KEY0_Pin:
     if (HAL_GPIO_ReadPin(KEY0_GPIO_Port, KEY0_Pin) == GPIO_PIN_RESET)
     {
+      HAL_UART_Transmit(&huart1,(uint8_t*)"Key 0 pressed\n",20,HAL_MAX_DELAY);
       switch (state)
       {
       case QuestionState:
@@ -240,8 +254,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
         break;
       case JudgeState:
-        Question();
         state = QuestionState;
+        Question();
         break;
 
       default:
@@ -250,6 +264,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     }
     break;
   case KEY1_Pin:
+  HAL_UART_Transmit(&huart1,(uint8_t*)"Key 1 pressed\n",20,HAL_MAX_DELAY);
     if (HAL_GPIO_ReadPin(KEY1_GPIO_Port, KEY1_Pin) == GPIO_PIN_RESET)
     {
       switch (state)
@@ -260,9 +275,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
         state = AnswerState;
         break;
       case JudgeState:
+        state = QuestionState;
         answerIndex = 0;
         Question();
-        state = QuestionState;
         break;
 
       default:
@@ -270,6 +285,34 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
       }
     }
   }
+}
+
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+	if(huart->Instance==USART1){
+		static unsigned char uRx_Data[20] = {0};
+		static unsigned char uLength = 0;
+		if(rxBuffer[0] == '\n'){
+			uLength = 0;
+      HAL_UART_Transmit(&huart1,(uint8_t*)uRx_Data,12,HAL_MAX_DELAY);
+      Answer(uRx_Data);
+			for(int i = 0; i < 20; i++){
+				uRx_Data[i] = '\0';
+			}
+			for(int i = 0; i < 20; i++){
+				rxBuffer[i] = '\0';
+			}
+		}
+		else if (rxBuffer[0] == '\r') {
+			//HAL_UART_Transmit(&huart1,(uint8_t*)"BEST WISHES\n",12,HAL_MAX_DELAY);
+		}
+		else{
+			uRx_Data[uLength] = rxBuffer[0];
+			uLength++;
+		}
+	}
+}
 
   /* USER CODE END 4 */
 

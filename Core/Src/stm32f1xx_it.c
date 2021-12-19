@@ -259,45 +259,6 @@ void EXTI15_10_IRQHandler(void)
 }
 
 /* USER CODE BEGIN 1 */
-unsigned char msg[100];
-unsigned char T_on_0[] = "Turn on LED0";
-unsigned char T_on_1[] = "Turn on LED1";
-unsigned char T_off_0[] = "Turn off LED0";
-unsigned char T_off_1[] = "Turn off LED1";
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-	if(huart->Instance==USART1){
-		static unsigned char uRx_Data[20] = {0};
-		static unsigned char uLength = 0;
-		if(rxBuffer[0] == '\n'){
-			if (strcmp(T_on_0, uRx_Data) == 0) {
-				HAL_GPIO_WritePin(LED0_GPIO_Port, LED0_Pin, GPIO_PIN_RESET);
-			}
-			if (strcmp(T_on_1, uRx_Data) == 0) {
-							HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
-						}
-			if (strcmp(T_off_0, uRx_Data) == 0) {
-							HAL_GPIO_WritePin(LED0_GPIO_Port, LED0_Pin, GPIO_PIN_SET);
-						}
-			if (strcmp(T_off_1, uRx_Data) == 0) {
-							HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_SET);
-						}
-			uLength = 0;
-			for(int i = 0; i < 20; i++){
-				uRx_Data[i] = 0;
-			}
-			for(int i = 0; i < 20; i++){
-				rxBuffer[i] = 0;
-						}
-		}
-		else if (rxBuffer[0] == '\r') {
-			//HAL_UART_Transmit(&huart1,(uint8_t*)"BEST WISHES\n",12,HAL_MAX_DELAY);
-		}
-		else{
-			uRx_Data[uLength] = rxBuffer[0];
-			uLength++;
-		}
-	}
-}
+
 /* USER CODE END 1 */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
