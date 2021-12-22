@@ -196,8 +196,14 @@ void Question()
   LCD_Clear(WHITE);
   // LCD_Color_Fill(0,0,240, 320,WHITE);
   LCD_ShowString(30, 40, 200, 24, 16, "Question   Time:5s");
-  LCD_ShowString(30, 70, 200, 16, 12, q->content);
-  LCD_ShowString(30, 150, 200, 16, 12, "Click any key to send the question.");
+  char strs[20];
+  sprintf(strs,"point: %d", q->pointAward);
+  LCD_ShowString(30, 70, 200, 16, 12, strs);
+  LCD_ShowString(30, 110, 200, 16, 12, q->content);
+  LCD_ShowString(30, 150, 200, 16, 12, q->answerList);
+  sprintf(strs,"answer: %d", q->answerIndex);
+  LCD_ShowString(30, 170, 200, 16, 12, strs);
+  LCD_ShowString(30, 190, 200, 16, 12, "Click any key to send the question.");
   // LCD_ShowString(30, 70, 200, 16, 16, q->content);
   POINT_COLOR = BLACK;
   HAL_UART_Transmit(&huart1, "Enter Question Mode", strlen("Enter Question Mode"), 0xffff);
@@ -265,7 +271,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
         HAL_UART_Transmit(&huart1, msg, strlen(msg), 0xffff);
         LCD_Clear(GREEN);
         // LCD_Color_Fill(0,0,240, 320,GREEN);
-        LCD_ShowString(30, 40, 200, 24, 16, "Question   Time:5s");
+        LCD_ShowString(30, 40, 200, 24, 16, "Question   Time:5 s");
         LCD_ShowString(30, 70, 200, 16, 12, msg);
         time_left = 5; // lyu
         HAL_TIM_Base_Start_IT(&htim2);
