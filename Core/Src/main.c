@@ -48,6 +48,8 @@
 /* USER CODE BEGIN PV */
 UART_HandleTypeDef huart1;
 extern uint8_t rxBuffer[20];
+extern TIM_HandleTypeDef htim2;
+extern TIM_HandleTypeDef htim3;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -62,6 +64,8 @@ void Answer(char*);
 /* USER CODE BEGIN 0 */
 extern UART_HandleTypeDef haurt1;
 extern uint8_t rxBuffer[20];
+int time_left;
+char time_l[20]; // lyu
 /* USER CODE END 0 */
 
 /**
@@ -94,8 +98,11 @@ int main(void)
   MX_GPIO_Init();
   MX_USART1_UART_Init();
   MX_TIM2_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
   HAL_UART_Receive_IT(&huart1, (uint8_t *)rxBuffer, 1);
+  __HAL_TIM_CLEAR_FLAG(&htim2, TIM_SR_UIF);// lyu 清除tim 的flag�? 否则刚开始start就会进入回调函数
+  __HAL_TIM_CLEAR_FLAG(&htim3, TIM_SR_UIF);// lyu 清除tim 的flag�? 否则刚开始start就会进入回调函数
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -206,6 +213,7 @@ void Answer(char* ans)
     if (atoi(ans)== q->answerIndex)
     {
       HAL_TIM_Base_Stop_IT(&htim2);
+      HAL_TIM_Base_Stop_IT(&htim3);//lyu
       // LCD_ShowString(30, 70, 200, 16, 12, "Check right!");
       point = point + q->pointAward;
       // HAL_Delay(500);
@@ -226,6 +234,8 @@ void Answer(char* ans)
 
 void Judge()
 {
+  HAL_TIM_Base_Stop_IT(&htim2);// lyu
+  HAL_TIM_Base_Stop_IT(&htim3);// lyu
   HAL_UART_Transmit(&huart1,"Enter Judge\n",strlen("Enter Judge\n"),HAL_MAX_DELAY);
   state=JudgeState;
   char strs[64];
@@ -236,10 +246,7 @@ void Judge()
   LCD_ShowString(30, 200, 200, 16, 12, "Click 1 to play and 0 to reset.");
 }
 
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-  Judge();
-}
+
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
@@ -260,7 +267,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
         // LCD_Color_Fill(0,0,240, 320,GREEN);
         LCD_ShowString(30, 40, 200, 24, 16, "Question   Time:5s");
         LCD_ShowString(30, 70, 200, 16, 12, msg);
+        time_left = 5; // lyu
         HAL_TIM_Base_Start_IT(&htim2);
+        HAL_TIM_Base_Start_IT(&htim3);// lyu
         state = AnswerState;
 
         break;
@@ -288,8 +297,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
         // LCD_Color_Fill(0,0,240, 320,GREEN);
         LCD_ShowString(30, 40, 200, 24, 16, "Question   Time:5s");
         LCD_ShowString(30, 70, 200, 16, 12, msg);
-        HAL_TIM_Base_Start_IT(&htim2);
         state = AnswerState;
+        time_left = 5; // lyu
+        HAL_TIM_Base_Start_IT(&htim2);
+        HAL_TIM_Base_Start_IT(&htim3); // lyu
         break;
       case JudgeState:
         state = QuestionState;
@@ -303,6 +314,19 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
   }
 }
 
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+ // lyu test
+	if (htim->Instance == htim3.Instance){
+		time_left --;
+		sprintf(time_l,"%d",time_left);
+		HAL_UART_Transmit(&huart1,(uint8_t*)time_l,strlen(time_l),HAL_MAX_DELAY);
+	}
+	if (htim->Instance == htim2.Instance){
+		HAL_UART_Transmit(&huart1,"timer\n",strlen("timer\n"),HAL_MAX_DELAY);
+		Judge();
+	}
+}
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
