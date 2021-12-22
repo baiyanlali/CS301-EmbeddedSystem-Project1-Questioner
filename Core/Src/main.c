@@ -200,7 +200,7 @@ void Question()
   LCD_ShowString(30, 150, 200, 16, 12, "Click any key to send the question.");
   // LCD_ShowString(30, 70, 200, 16, 16, q->content);
   POINT_COLOR = BLACK;
-
+  HAL_UART_Transmit(&huart1, "Enter Question Mode", strlen("Enter Question Mode"), 0xffff);
   answerIndex++;
   answerIndex %= 2;
 }
@@ -286,8 +286,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     break;
   case KEY1_Pin:
   HAL_UART_Transmit(&huart1,(uint8_t*)"Key 1 pressed\n",20,HAL_MAX_DELAY);
-    if (HAL_GPIO_ReadPin(KEY1_GPIO_Port, KEY1_Pin) == GPIO_PIN_RESET)
-    {
+
       switch (state)
       {
       case QuestionState:
@@ -310,7 +309,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
       default:
         break;
       }
-    }
+
   }
 }
 
@@ -320,6 +319,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	if (htim->Instance == htim3.Instance){
 		time_left --;
 		sprintf(time_l,"%d",time_left);
+		char strs[20];
+		sprintf(strs,"Question   Time:%d s",time_left);
+		LCD_ShowString(30, 40, 200, 24, 16, strs);
 		HAL_UART_Transmit(&huart1,(uint8_t*)time_l,strlen(time_l),HAL_MAX_DELAY);
 	}
 	if (htim->Instance == htim2.Instance){
