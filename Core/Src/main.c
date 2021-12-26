@@ -248,7 +248,7 @@ void Answer(char *ans)
   if (atoi(ans) == q->answerIndex)
   {
     sprintf(msg, "Check right: %d %d\n", atoi(ans), q->answerIndex);
-    send_message(msg);
+    // send_message(msg);
     HAL_UART_Transmit(&huart1, msg, strlen(msg), HAL_MAX_DELAY);
     HAL_TIM_Base_Stop_IT(&htim2);
     HAL_TIM_Base_Stop_IT(&htim3); //lyu
@@ -260,7 +260,7 @@ void Answer(char *ans)
   else
   {
     sprintf(msg, "Check wrong: %d %d\n", atoi(ans), q->answerIndex);
-    send_message(msg);
+    // send_message(msg);
     HAL_UART_Transmit(&huart1, msg, strlen(msg), HAL_MAX_DELAY);
     LCD_Clear(RED);
     // LCD_Color_Fill(0,0,240, 320,RED);
@@ -303,7 +303,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
       {
       case QuestionState:
 
-        sprintf(messages_send, "%d|%s|%s|%d|%d|", q->index, q->content, q->answerList, q->pointAward, q->time);
+        sprintf(messages_send, "%s|%s|%d|%d|",  q->content, q->answerList, q->pointAward, q->time);
         send_message(messages_send);
         send_msg_uart1(messages_send, 0);
 
@@ -334,7 +334,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     switch (state)
     {
     case QuestionState:
-       sprintf(messages_send, "%d|%s|%s|%d|%d|", q->index, q->content, q->answerList, q->pointAward, q->time);
+        sprintf(messages_send, "%s|%s|%d|%d|",  q->content, q->answerList, q->pointAward, q->time);
         send_message(messages_send);
         send_msg_uart1(messages_send, 0);
 
@@ -374,7 +374,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   if (htim->Instance == htim2.Instance)
   {
     HAL_UART_Transmit(&huart1, "timer\n", strlen("timer\n"), HAL_MAX_DELAY);
-    send_message("timer\n");
+    // send_message("timer\n");
     Judge();
   }
 }
