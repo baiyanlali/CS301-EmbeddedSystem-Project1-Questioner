@@ -247,6 +247,9 @@ void Answer(char *ans)
   // case AnswerState:
   if (atoi(ans) == q->answerIndex)
   {
+    sprintf(msg, "Check right: %d %d\n", atoi(ans), q->answerIndex);
+    send_message(msg);
+    HAL_UART_Transmit(&huart1, msg, strlen(msg), HAL_MAX_DELAY);
     HAL_TIM_Base_Stop_IT(&htim2);
     HAL_TIM_Base_Stop_IT(&htim3); //lyu
     // LCD_ShowString(30, 70, 200, 16, 12, "Check right!");
@@ -277,7 +280,7 @@ void Judge()
   HAL_UART_Transmit(&huart1, "Enter Judge\n", strlen("Enter Judge\n"), HAL_MAX_DELAY);
   state = JudgeState;
   char strs[64];
-  sprintf(strs, "Your point: %d", point);
+  sprintf(strs, "You get point:|%d", q->pointAward);
   send_message(strs);
   LCD_Clear(WHITE);
   // LCD_Color_Fill(0,0,240, 320,WHITE);
@@ -287,21 +290,20 @@ void Judge()
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-
+      char messages_send[1024];
   switch (GPIO_Pin)
 
   {
   case KEY0_Pin:
     if (HAL_GPIO_ReadPin(KEY0_GPIO_Port, KEY0_Pin) == GPIO_PIN_RESET)
     {
-      char messages_send[1024];
 
       HAL_UART_Transmit(&huart1, (uint8_t *)"Key 0 pressed\n", 20, HAL_MAX_DELAY);
       switch (state)
       {
       case QuestionState:
 
-        sprintf(messages_send, "%d|%s|%s|%d|%d", q->index, q->content, q->answerList, q->pointAward, q->time);
+        sprintf(messages_send, "%d|%s|%s|%d|%d|", q->index, q->content, q->answerList, q->pointAward, q->time);
         send_message(messages_send);
         send_msg_uart1(messages_send, 0);
 
@@ -332,7 +334,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     switch (state)
     {
     case QuestionState:
-       sprintf(messages_send, "%d|%s|%s|%d|%d", q->index, q->content, q->answerList, q->pointAward, q->time);
+       sprintf(messages_send, "%d|%s|%s|%d|%d|", q->index, q->content, q->answerList, q->pointAward, q->time);
         send_message(messages_send);
         send_msg_uart1(messages_send, 0);
 
