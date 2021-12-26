@@ -537,12 +537,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 				} else if (strncmp(uart2_rx_buffer, "\r\n+IPD,", 7) == 0) {
 					HAL_GPIO_WritePin(LED0_GPIO_Port, LED0_Pin, GPIO_PIN_RESET); //1
 					HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET); //1
-					HAL_UART_Transmit(&huart1, (uint8_t*) uart2_rx_buffer,
-							data_length, 0xffff);
+					// HAL_UART_Transmit(&huart1, (uint8_t*) uart2_rx_buffer,
+					// 		data_length, 0xffff);
+          send_msg_uart1(uart2_rx_buffer,0);
               //TODO: 在这里接收
-          Answer(uart2_rx_buffer);
-					long idx = strchr((char*) uart2_rx_buffer, ':')
-							- (char*) uart2_rx_buffer;
+          // Answer(uart2_rx_buffer);
+					char * idx = strchr((char*) uart2_rx_buffer, ':') + 1;
+          send_msg_uart1(idx,0);
+          Answer(idx);
 					// printOut(uart2_rx_buffer + 1 + idx, data_length - idx, 2,
 					// 		connect_flag);
 				} else if (strncmp(uart2_rx_buffer, (uint8_t*) "SEND FAIL", 9)
