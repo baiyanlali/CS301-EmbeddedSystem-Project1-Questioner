@@ -257,6 +257,7 @@ void Answer(char *ans)
   else
   {
     sprintf(msg, "Check wrong: %d %d\n", atoi(ans), q->answerIndex);
+    send_message(msg);
     HAL_UART_Transmit(&huart1, msg, strlen(msg), HAL_MAX_DELAY);
     LCD_Clear(RED);
     // LCD_Color_Fill(0,0,240, 320,RED);
@@ -277,6 +278,7 @@ void Judge()
   state = JudgeState;
   char strs[64];
   sprintf(strs, "Your point: %d", point);
+  send_message(strs);
   LCD_Clear(WHITE);
   // LCD_Color_Fill(0,0,240, 320,WHITE);
   LCD_ShowString(30, 70, 200, 16, 12, strs);
@@ -330,17 +332,20 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     switch (state)
     {
     case QuestionState:
-      sprintf(msg, "%s", q->content);
-      HAL_UART_Transmit(&huart1, msg, strlen(msg), 0xffff);
-      LCD_Clear(GREEN);
-      // LCD_Color_Fill(0,0,240, 320,GREEN);
-      LCD_ShowString(30, 40, 200, 24, 16, "Question   Time:5s");
-      LCD_ShowString(30, 70, 200, 16, 12, msg);
-      state = AnswerState;
-      time_left = 5; // lyu
-      HAL_TIM_Base_Start_IT(&htim2);
-      HAL_TIM_Base_Start_IT(&htim3); // lyu
-      break;
+       sprintf(messages_send, "%d|%s|%s|%d|%d", q->index, q->content, q->answerList, q->pointAward, q->time);
+        send_message(messages_send);
+        send_msg_uart1(messages_send, 0);
+
+        LCD_Clear(GREEN);
+        // LCD_Color_Fill(0,0,240, 320,GREEN);
+        LCD_ShowString(30, 40, 200, 24, 16, "Question   Time:5 s");
+        LCD_ShowString(30, 70, 200, 16, 12, msg);
+        time_left = 5; // lyu
+        HAL_TIM_Base_Start_IT(&htim2);
+        HAL_TIM_Base_Start_IT(&htim3); // lyu
+        state = AnswerState;
+
+        break;
     case JudgeState:
       state = QuestionState;
       Question();
