@@ -19,6 +19,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "dma.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
@@ -46,10 +47,18 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-UART_HandleTypeDef huart1;
+// UART_HandleTypeDef huart1;
 extern uint8_t rxBuffer[20];
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim3;
+
+uint8_t uart1_rx_buffer[2048]; // for uart1 receive buffer
+uint8_t uart2_rx_buffer[2048]; // for uart2 receive buffer
+
+extern DMA_HandleTypeDef hdma_usart1_rx;
+extern DMA_HandleTypeDef hdma_usart2_rx;
+extern UART_HandleTypeDef huart1;
+extern UART_HandleTypeDef huart2;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -57,7 +66,10 @@ void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 void Question();
 void Judge();
-void Answer(char*);
+void Answer(char *);
+
+void send_message(uint8_t *msg);
+void send_msg_uart1(uint8_t *, int);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -96,18 +108,35 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_USART1_UART_Init();
+  MX_DMA_Init();
   MX_TIM2_Init();
   MX_TIM3_Init();
+  MX_USART1_UART_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-  HAL_UART_Receive_IT(&huart1, (uint8_t *)rxBuffer, 1);
-  __HAL_TIM_CLEAR_FLAG(&htim2, TIM_SR_UIF);// lyu 清除tim 的flag�? 否则刚开始start就会进入回调函数
-  __HAL_TIM_CLEAR_FLAG(&htim3, TIM_SR_UIF);// lyu 清除tim 的flag�? 否则刚开始start就会进入回调函数
+
+  // __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
+  // HAL_UART_Receive_DMA(&huart1, (uint8_t *)uart1_rx_buffer, 2048);
+  __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
+  HAL_UART_Receive_DMA(&huart1, (uint8_t *)uart1_rx_buffer, 2048);
+
+  __HAL_UART_ENABLE_IT(&huart2, UART_IT_IDLE);
+  HAL_UART_Receive_DMA(&huart2, (uint8_t *)uart2_rx_buffer, 2048);
+  // HAL_UART_Receive_IT(&huart1, (uint8_t *)rxBuffer, 1);
+  __HAL_TIM_CLEAR_FLAG(&htim2, TIM_SR_UIF); // lyu 清除tim 的flag�???? 否则刚开始start就会进入回调函数
+  __HAL_TIM_CLEAR_FLAG(&htim3, TIM_SR_UIF); // lyu 清除tim 的flag�???? 否则刚开始start就会进入回调函数
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  Question();
+  // esp8266_mode = 1;
+  // send_msg_uart1((uint8_t *)"SET AS SERVER\r\n", 0);
+  // send_cmd("AT+CWMODE=3\r\n", 1000);
+
+  init_server();
+  LCD_ShowString(30, 40, 200, 24, 16, "Connecting...");
+  // send_msg_uart1((uint8_t *)"Init Server End\r\n", 0);
+  // Question();
   while (1)
   {
     /* USER CODE END WHILE */
@@ -142,8 +171,7 @@ void SystemClock_Config(void)
   }
   /** Initializes the CPU, AHB and APB buses clocks
   */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
@@ -171,11 +199,12 @@ struct question
   char *answerList;
   int answerIndex;
   int pointAward;
+  int time;
 };
 
 struct question questions[2] = {
-    {1, "Do you like embedded system course?\n", "0: Yes 1:No", 0, 20},
-    {2, "Do you like C?\n", "0: Yes 1:No", 1, 100}};
+    {1, "Do you like embedded system course?\n", "0: Yes 1:No", 0, 20, 5},
+    {2, "Do you like C?\n", "0: Yes 1:No", 1, 100, 5}};
 
 int answerIndex = 0;
 
@@ -185,7 +214,6 @@ int point = 0;
 
 char *answer;
 unsigned char msg[100];
-
 
 void Question()
 {
@@ -197,40 +225,43 @@ void Question()
   // LCD_Color_Fill(0,0,240, 320,WHITE);
   LCD_ShowString(30, 40, 200, 24, 16, "Question   Time:5s");
   char strs[20];
-  sprintf(strs,"point: %d", q->pointAward);
+  sprintf(strs, "point: %d", q->pointAward);
   LCD_ShowString(30, 70, 200, 16, 12, strs);
   LCD_ShowString(30, 110, 200, 16, 12, q->content);
   LCD_ShowString(30, 150, 200, 16, 12, q->answerList);
-  sprintf(strs,"answer: %d", q->answerIndex);
+  sprintf(strs, "answer: %d", q->answerIndex);
   LCD_ShowString(30, 170, 200, 16, 12, strs);
   LCD_ShowString(30, 190, 200, 16, 12, "Click any key to send the question.");
   // LCD_ShowString(30, 70, 200, 16, 16, q->content);
   POINT_COLOR = BLACK;
-  HAL_UART_Transmit(&huart1, "Enter Question Mode", strlen("Enter Question Mode"), 0xffff);
+  HAL_UART_Transmit(&huart1, "Enter Question Mode\n", strlen("Enter Question Mode\n"), 0xffff);
+
   answerIndex++;
   answerIndex %= 2;
 }
 
-void Answer(char* ans)
+void Answer(char *ans)
 {
   // switch (state)
   // {
   // case AnswerState:
-    if (atoi(ans)== q->answerIndex)
-    {
-      HAL_TIM_Base_Stop_IT(&htim2);
-      HAL_TIM_Base_Stop_IT(&htim3);//lyu
-      // LCD_ShowString(30, 70, 200, 16, 12, "Check right!");
-      point = point + q->pointAward;
-      // HAL_Delay(500);
-      Judge();
-    }else{
-      sprintf(msg,"Check wrong: %d %d\n",atoi(ans),q->answerIndex);
-      HAL_UART_Transmit(&huart1,msg,strlen(msg),HAL_MAX_DELAY);
-      LCD_Clear(RED);
-      // LCD_Color_Fill(0,0,240, 320,RED);
-      LCD_ShowString(30, 70, 200, 16, 12, "Check wrong!");
-    }
+  if (atoi(ans) == q->answerIndex)
+  {
+    HAL_TIM_Base_Stop_IT(&htim2);
+    HAL_TIM_Base_Stop_IT(&htim3); //lyu
+    // LCD_ShowString(30, 70, 200, 16, 12, "Check right!");
+    point = point + q->pointAward;
+    // HAL_Delay(500);
+    Judge();
+  }
+  else
+  {
+    sprintf(msg, "Check wrong: %d %d\n", atoi(ans), q->answerIndex);
+    HAL_UART_Transmit(&huart1, msg, strlen(msg), HAL_MAX_DELAY);
+    LCD_Clear(RED);
+    // LCD_Color_Fill(0,0,240, 320,RED);
+    LCD_ShowString(30, 70, 200, 16, 12, "Check wrong!");
+  }
   //   break;
 
   // default:
@@ -240,10 +271,10 @@ void Answer(char* ans)
 
 void Judge()
 {
-  HAL_TIM_Base_Stop_IT(&htim2);// lyu
-  HAL_TIM_Base_Stop_IT(&htim3);// lyu
-  HAL_UART_Transmit(&huart1,"Enter Judge\n",strlen("Enter Judge\n"),HAL_MAX_DELAY);
-  state=JudgeState;
+  HAL_TIM_Base_Stop_IT(&htim2); // lyu
+  HAL_TIM_Base_Stop_IT(&htim3); // lyu
+  HAL_UART_Transmit(&huart1, "Enter Judge\n", strlen("Enter Judge\n"), HAL_MAX_DELAY);
+  state = JudgeState;
   char strs[64];
   sprintf(strs, "Your point: %d", point);
   LCD_Clear(WHITE);
@@ -251,8 +282,6 @@ void Judge()
   LCD_ShowString(30, 70, 200, 16, 12, strs);
   LCD_ShowString(30, 200, 200, 16, 12, "Click 1 to play and 0 to reset.");
 }
-
-
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
@@ -263,19 +292,24 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
   case KEY0_Pin:
     if (HAL_GPIO_ReadPin(KEY0_GPIO_Port, KEY0_Pin) == GPIO_PIN_RESET)
     {
-      HAL_UART_Transmit(&huart1,(uint8_t*)"Key 0 pressed\n",20,HAL_MAX_DELAY);
+      char messages_send[1024];
+
+      HAL_UART_Transmit(&huart1, (uint8_t *)"Key 0 pressed\n", 20, HAL_MAX_DELAY);
       switch (state)
       {
       case QuestionState:
-        sprintf(msg,"%s",q->content);
-        HAL_UART_Transmit(&huart1, msg, strlen(msg), 0xffff);
+
+        sprintf(messages_send, "%d|%s|%s|%d|%d", q->index, q->content, q->answerList, q->pointAward, q->time);
+        send_message(messages_send);
+        send_msg_uart1(messages_send, 0);
+
         LCD_Clear(GREEN);
         // LCD_Color_Fill(0,0,240, 320,GREEN);
         LCD_ShowString(30, 40, 200, 24, 16, "Question   Time:5 s");
         LCD_ShowString(30, 70, 200, 16, 12, msg);
         time_left = 5; // lyu
         HAL_TIM_Base_Start_IT(&htim2);
-        HAL_TIM_Base_Start_IT(&htim3);// lyu
+        HAL_TIM_Base_Start_IT(&htim3); // lyu
         state = AnswerState;
 
         break;
@@ -291,75 +325,51 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     }
     break;
   case KEY1_Pin:
-  HAL_UART_Transmit(&huart1,(uint8_t*)"Key 1 pressed\n",20,HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, (uint8_t *)"Key 1 pressed\n", 20, HAL_MAX_DELAY);
 
-      switch (state)
-      {
-      case QuestionState:
-        sprintf(msg,"%s",q->content);
-        HAL_UART_Transmit(&huart1, msg, strlen(msg), 0xffff);
-        LCD_Clear(GREEN);
-        // LCD_Color_Fill(0,0,240, 320,GREEN);
-        LCD_ShowString(30, 40, 200, 24, 16, "Question   Time:5s");
-        LCD_ShowString(30, 70, 200, 16, 12, msg);
-        state = AnswerState;
-        time_left = 5; // lyu
-        HAL_TIM_Base_Start_IT(&htim2);
-        HAL_TIM_Base_Start_IT(&htim3); // lyu
-        break;
-      case JudgeState:
-        state = QuestionState;
-        Question();
-        break;
+    switch (state)
+    {
+    case QuestionState:
+      sprintf(msg, "%s", q->content);
+      HAL_UART_Transmit(&huart1, msg, strlen(msg), 0xffff);
+      LCD_Clear(GREEN);
+      // LCD_Color_Fill(0,0,240, 320,GREEN);
+      LCD_ShowString(30, 40, 200, 24, 16, "Question   Time:5s");
+      LCD_ShowString(30, 70, 200, 16, 12, msg);
+      state = AnswerState;
+      time_left = 5; // lyu
+      HAL_TIM_Base_Start_IT(&htim2);
+      HAL_TIM_Base_Start_IT(&htim3); // lyu
+      break;
+    case JudgeState:
+      state = QuestionState;
+      Question();
+      break;
 
-      default:
-        break;
-      }
-
+    default:
+      break;
+    }
   }
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
- // lyu test
-	if (htim->Instance == htim3.Instance){
-		time_left --;
-		sprintf(time_l,"%d",time_left);
-		char strs[20];
-		sprintf(strs,"Question   Time:%d s",time_left);
-		LCD_ShowString(30, 40, 200, 24, 16, strs);
-		HAL_UART_Transmit(&huart1,(uint8_t*)time_l,strlen(time_l),HAL_MAX_DELAY);
-	}
-	if (htim->Instance == htim2.Instance){
-		HAL_UART_Transmit(&huart1,"timer\n",strlen("timer\n"),HAL_MAX_DELAY);
-		Judge();
-	}
-}
-
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-	if(huart->Instance==USART1){
-		static unsigned char uRx_Data[20] = {0};
-		static unsigned char uLength = 0;
-		if(rxBuffer[0] == '\n'){
-			uLength = 0;
-      HAL_UART_Transmit(&huart1,(uint8_t*)uRx_Data,12,HAL_MAX_DELAY);
-      Answer(uRx_Data);
-			for(int i = 0; i < 20; i++){
-				uRx_Data[i] = '\0';
-			}
-			for(int i = 0; i < 20; i++){
-				rxBuffer[i] = '\0';
-			}
-		}
-		else if (rxBuffer[0] == '\r') {
-			//HAL_UART_Transmit(&huart1,(uint8_t*)"BEST WISHES\n",12,HAL_MAX_DELAY);
-		}
-		else{
-			uRx_Data[uLength] = rxBuffer[0];
-			uLength++;
-		}
-	}
+  // lyu test
+  if (htim->Instance == htim3.Instance)
+  {
+    time_left--;
+    sprintf(time_l, "%d", time_left);
+    char strs[20];
+    sprintf(strs, "Question   Time:%d s", time_left);
+    LCD_ShowString(30, 40, 200, 24, 16, strs);
+    HAL_UART_Transmit(&huart1, (uint8_t *)time_l, strlen(time_l), HAL_MAX_DELAY);
+  }
+  if (htim->Instance == htim2.Instance)
+  {
+    HAL_UART_Transmit(&huart1, "timer\n", strlen("timer\n"), HAL_MAX_DELAY);
+    send_message("timer\n");
+    Judge();
+  }
 }
 
 /* USER CODE END 4 */
@@ -371,15 +381,15 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-    /* User can add his own implementation to report the HAL error return state */
-    __disable_irq();
-    while (1)
-    {
-    }
+  /* User can add his own implementation to report the HAL error return state */
+  __disable_irq();
+  while (1)
+  {
+  }
   /* USER CODE END Error_Handler_Debug */
 }
 
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.
@@ -390,7 +400,7 @@ void Error_Handler(void)
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
-    /* User can add his own implementation to report the file name and line number,
+  /* User can add his own implementation to report the file name and line number,
      ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
   /* USER CODE END 6 */
 }
