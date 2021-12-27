@@ -331,7 +331,9 @@ void EXTI15_10_IRQHandler(void)
 
 /* USER CODE BEGIN 1 */
 
-
+void transmit1(uint8_t* msg){
+  HAL_UART_Transmit(&huart1, (uint8_t *)msg, strlen(msg), 0xffff);
+}
 
 void send_msg_uart1(uint8_t *msg, int delay_time)
 {
@@ -341,9 +343,36 @@ void send_msg_uart1(uint8_t *msg, int delay_time)
 
 void send_cmd(uint8_t *cmd, int delay_time)
 {
+  char command[100];
+  sprintf(command,"Start send command:%s\n",cmd);
+  // send_msg_uart1(command,20);
   HAL_UART_Transmit(&huart2, (uint8_t *)cmd, strlen(cmd), 0xffff);
+  // send_msg_uart1("Start send command END\n",20);
   // HAL_UART_Transmit(&huart1, (uint8_t *)cmd, strlen(cmd), 0xffff);
   HAL_Delay(delay_time);
+}
+
+void send_cmd_without_delay(uint8_t *cmd)
+{
+  char command[100];
+  sprintf(command,"Start send command:\n%s\n",cmd);
+  transmit1(command);
+  HAL_UART_Transmit(&huart2, (uint8_t *)cmd, strlen(cmd), 0xffff);
+  transmit1("Start send command END\n");
+  // HAL_UART_Transmit(&huart1, (uint8_t *)cmd, strlen(cmd), 0xffff);
+}
+
+
+void send_message_without_delay(uint8_t* msg){
+  uint8_t activate[100];
+  sprintf(activate, "AT+CIPSEND=%d,%d\r\n", link_number, strlen(msg));
+  // send_cmd((uint8_t *)activate, 0);
+  send_cmd_without_delay((uint8_t *)activate);
+  // transmit1("\n>>>>>SENDING<<<<<\n");
+  // transmit1(msg);
+  // transmit1("\n>>>>>SENDING END<<<<<\n");
+  // send_cmd(msg, 0);
+  send_cmd_without_delay(msg);
 }
 
 void send_message(uint8_t *msg)
@@ -387,6 +416,8 @@ void init_server()
   send_cmd("AT+CWMODE=3\r\n", 2000);
   send_cmd("AT+RST\r\n", 5000);
   send_cmd("AT+CWSAP=\"SUSTC-WIFI-FAKE\",\"987654321\",1,0,4,0\r\n", 2000);
+  
+  // send_cmd("AT+CWSAP=\"SUSTC-WIFI-FAKE\",\"987654321\",5,3,4,0\r\n", 2000);
   send_cmd("AT+CIPMUX=1\r\n", 2000);
   send_cmd("AT+CIPSERVER=1,8089\r\n", 2000);
   send_msg_uart1((uint8_t *)"end initialize server\r\n", 0);
@@ -539,12 +570,17 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 					HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET); //1
 					// HAL_UART_Transmit(&huart1, (uint8_t*) uart2_rx_buffer,
 					// 		data_length, 0xffff);
-          send_msg_uart1(uart2_rx_buffer,0);
+          // send_msg_uart1("Start Recieve\n",10);
+          // send_msg_uart1(uart2_rx_buffer,10);
+          // send_msg_uart1("End Recieve\n",10);
+
+          HAL_UART_Transmit(&huart1, (uint8_t *)"Start Recieve\n", strlen("Start Recieve\n"), 0xffff);
+          HAL_UART_Transmit(&huart1, (uint8_t *)uart2_rx_buffer, strlen(uart2_rx_buffer), 0xffff);
+          HAL_UART_Transmit(&huart1, (uint8_t *)"END Recieve\n", strlen("END Recieve\n"), 0xffff);
               //TODO: 在这里接收
-          // Answer(uart2_rx_buffer);
-					char * idx = strchr((char*) uart2_rx_buffer, ':') + 1;
-          send_msg_uart1(idx,0);
-          Answer(idx);
+					// char * idx = strchr((char*) uart2_rx_buffer, ':') + 1;
+          // send_msg_uart1(idx,0);
+          Answer(uart2_rx_buffer);
 					// printOut(uart2_rx_buffer + 1 + idx, data_length - idx, 2,
 					// 		connect_flag);
 				} else if (strncmp(uart2_rx_buffer, (uint8_t*) "SEND FAIL", 9)
