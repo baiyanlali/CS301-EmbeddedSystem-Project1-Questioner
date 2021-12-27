@@ -292,11 +292,15 @@ void Judge()
   state = JudgeState;
   char strs[64];
   sprintf(strs, "F:You get point:|%d|", point);
-  send_message_without_delay(strs);
+
   LCD_Clear(WHITE);
   // LCD_Color_Fill(0,0,240, 320,WHITE);
   LCD_ShowString(30, 70, 200, 16, 12, strs);
   LCD_ShowString(30, 200, 200, 16, 12, "Click 1 to play and 0 to reset.");
+  
+  // HAL_Delay(500);
+  send_message_without_delay(strs);
+  
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
