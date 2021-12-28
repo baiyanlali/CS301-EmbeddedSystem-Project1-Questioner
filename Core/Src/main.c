@@ -59,6 +59,7 @@ extern DMA_HandleTypeDef hdma_usart1_rx;
 extern DMA_HandleTypeDef hdma_usart2_rx;
 extern UART_HandleTypeDef huart1;
 extern UART_HandleTypeDef huart2;
+extern int esp8266_mode;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -133,7 +134,7 @@ int main(void)
   // esp8266_mode = 1;
   // send_msg_uart1((uint8_t *)"SET AS SERVER\r\n", 0);
   // send_cmd("AT+CWMODE=3\r\n", 1000);
-
+  esp8266_mode = 1;
   init_server();
   LCD_ShowString(30, 40, 200, 24, 16, "Connecting...");
   // send_msg_uart1((uint8_t *)"Init Server End\r\n", 0);
@@ -239,7 +240,7 @@ void Question()
   LCD_ShowString(30, 190, 200, 16, 12, "Click any key to send the question.");
   // LCD_ShowString(30, 70, 200, 16, 16, q->content);
   POINT_COLOR = BLACK;
-  HAL_UART_Transmit(&huart1, "\nEnter Question Mode\n", strlen("Enter Question Mode\n"), 0xffff);
+  HAL_UART_Transmit(&huart1, "\nEnter Question Mode\n", strlen("\nEnter Question Mode\n"), 0xffff);
   time_left = q->time;
   answerIndex++;
   answerIndex %= 4;
@@ -251,10 +252,10 @@ void Answer(uint8_t *ans)
   // {
   // case AnswerState:
   char a[100];
-  sprintf(a, "Answer is: |%s|", ans);
-  transmit1(a);
+  // sprintf(a, "Answer is: |%s|", ans);
+  // transmit1(a);
   ans = strchr(ans, ':') + 1;
-  sprintf(a, "Answer is: |%s|", ans);
+  sprintf(a, "\nAnswer is: |%s|\n", ans);
   transmit1(a);
   if (atoi(ans) == q->answerIndex)
   {
@@ -286,21 +287,37 @@ void Answer(uint8_t *ans)
 
 void Judge()
 {
-  HAL_TIM_Base_Stop_IT(&htim2); // lyu
-  HAL_TIM_Base_Stop_IT(&htim3); // lyu
+
   HAL_UART_Transmit(&huart1, "Enter Judge\n", strlen("Enter Judge\n"), HAL_MAX_DELAY);
-  state = JudgeState;
+  state = AnswerState;
   char strs[64];
   sprintf(strs, "F:You get point:|%d|", point);
-
+  LCD_ShowString(30, 200, 200, 16, 12, "Click 1 to send feedback.");
   LCD_Clear(WHITE);
   // LCD_Color_Fill(0,0,240, 320,WHITE);
   LCD_ShowString(30, 70, 200, 16, 12, strs);
+
+  //  uint32_t delay=1008600;
+  //  while(delay--){
+  //
+  //  }
+  //  transmit1("\nStart Delay\n");
+  //   HAL_Delay(500);
+  //   transmit1("\nEND Delay\n");
+  // HAL_TIM_Base_Stop_IT(&htim2); // lyu
+  // HAL_TIM_Base_Stop_IT(&htim3); // lyu
+}
+
+void SendFeedBack()
+{
+  state = JudgeState;
+  char strs[64];
+  transmit1("\nStart to Send Feedback\n");
+  sprintf(strs, "F:You get point:|%d|", point);
   LCD_ShowString(30, 200, 200, 16, 12, "Click 1 to play and 0 to reset.");
-  
-  // HAL_Delay(500);
+  HAL_TIM_Base_Stop_IT(&htim2); // lyu
+  HAL_TIM_Base_Stop_IT(&htim3); // lyu
   send_message_without_delay(strs);
-  
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
@@ -317,22 +334,26 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
       switch (state)
       {
-      case QuestionState:
+        // case QuestionState:
 
-        sprintf(messages_send, "Q:%s|%s|%d|%d|", q->content, q->answerList, q->pointAward, q->time);
-        send_message(messages_send);
-        send_msg_uart1(messages_send, 0);
+        //   sprintf(messages_send, "Q:%s|%s|%d|%d|", q->content, q->answerList, q->pointAward, q->time);
+        //   send_message(messages_send);
+        //   transmit1(messages_send);
 
-        LCD_Clear(GREEN);
-        // LCD_Color_Fill(0,0,240, 320,GREEN);
-        LCD_ShowString(30, 40, 200, 24, 16, "Question   Time:");
-        LCD_ShowString(30, 70, 200, 16, 12, msg);
-        // time_left = 5; // lyu
-        HAL_TIM_Base_Start_IT(&htim2);
-        HAL_TIM_Base_Start_IT(&htim3); // lyu
-        state = AnswerState;
+        //   LCD_Clear(GREEN);
+        //   // LCD_Color_Fill(0,0,240, 320,GREEN);
+        //   LCD_ShowString(30, 40, 200, 24, 16, "Question   Time:");
+        //   LCD_ShowString(30, 70, 200, 16, 12, msg);
+        //   // time_left = 5; // lyu
+        //   HAL_TIM_Base_Start_IT(&htim2);
+        //   HAL_TIM_Base_Start_IT(&htim3); // lyu
+        //   state = AnswerState;
 
-        break;
+        //   break;
+        // case AnswerState:
+        //   SendFeedBack();
+        //   break;
+
       case JudgeState:
         answerIndex = 0;
         state = QuestionState;
@@ -345,32 +366,39 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     }
     break;
   case KEY1_Pin:
-    HAL_UART_Transmit(&huart1, (uint8_t *)"Key 1 pressed\n", 20, HAL_MAX_DELAY);
-
-    switch (state)
+    if (HAL_GPIO_ReadPin(KEY1_GPIO_Port, KEY1_Pin) == GPIO_PIN_RESET)
     {
-    case QuestionState:
-      sprintf(messages_send, "Q:%s|%s|%d|%d|", q->content, q->answerList, q->pointAward, q->time);
-      send_message(messages_send);
-      send_msg_uart1(messages_send, 0);
+      HAL_UART_Transmit(&huart1, (uint8_t *)"\nKey 1 pressed\n", 16, HAL_MAX_DELAY);
 
-      LCD_Clear(GREEN);
-      // LCD_Color_Fill(0,0,240, 320,GREEN);
-      LCD_ShowString(30, 40, 200, 24, 16, "Question   Time:");
-      LCD_ShowString(30, 70, 200, 16, 12, msg);
-      // time_left = 5; // lyu
-      HAL_TIM_Base_Start_IT(&htim2);
-      HAL_TIM_Base_Start_IT(&htim3); // lyu
-      state = AnswerState;
+      switch (state)
+      {
+      case QuestionState:
+        sprintf(messages_send, "Q:%s|%s|%d|%d|", q->content, q->answerList, q->pointAward, q->time);
+        send_message(messages_send);
+        transmit1(messages_send);
 
-      break;
-    case JudgeState:
-      state = QuestionState;
-      Question();
-      break;
+        LCD_Clear(GREEN);
+        // LCD_Color_Fill(0,0,240, 320,GREEN);
+        LCD_ShowString(30, 40, 200, 24, 16, "Question   Time:");
+        LCD_ShowString(30, 70, 200, 16, 12, msg);
+        // time_left = 5; // lyu
+        HAL_TIM_Base_Start_IT(&htim2);
+        HAL_TIM_Base_Start_IT(&htim3); // lyu
+        state = AnswerState;
 
-    default:
-      break;
+        break;
+      case JudgeState:
+        state = QuestionState;
+        Question();
+        break;
+
+      case AnswerState:
+        SendFeedBack();
+        break;
+
+      default:
+        break;
+      }
     }
   }
 }
@@ -383,7 +411,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     time_left--;
     sprintf(time_l, "%d\n", time_left);
     char strs[20];
-    sprintf(strs, "Question   Time:%d s", time_left);
+    sprintf(strs, "Question   Time:%d s  ", time_left);
     LCD_ShowString(30, 40, 200, 24, 16, strs);
     HAL_UART_Transmit(&huart1, (uint8_t *)time_l, strlen(time_l), HAL_MAX_DELAY);
     if (time_left == 0)
