@@ -354,6 +354,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
         //   SendFeedBack();
         //   break;
 
+      case AnswerState:
+		  SendFeedBack();
+		  break;
+
       case JudgeState:
         answerIndex = 0;
         state = QuestionState;
